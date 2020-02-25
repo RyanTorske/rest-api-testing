@@ -80,6 +80,41 @@ try {
 			validateJwtHeader();
 			$favorite = new Favorite($_SESSION["profile"]->getPRofileId(), $requestObject->favoriteCharacterId);
 			$favorite->insert($pdo);
+			$reply->message = "Favorited Character Successful.";
+
+		} else if($method === "PUT") {
+			//enforce the end user has an XRSF Token
+			verifyXsrf();
+			//enforce the end user has a JWT token
+			validateJwtHeader();
+			//grab the favorite by its composite key
+			$favorite = Favorite::getFavoriteByFavoriteProfileIdAndFavoriteCharacterId($pdo, $requestObject->favoriteProfileId, $requestObject->favoriteCharacterid);
+			if($favorite === null) {
+				throw (new RuntimeException("Favorite Does Not Exist"));
+			}
+			//enforce the user is signed in and only trying to edit their own favorites, either add or delete
+			if(empty($_SESSION["profile"]) === true || $_SESSION["profile"]->getProfileId()->toString() !== $favorite->getFavoriteProfileId()->toString()) {
+				throw(new \InvalidArgumentException("You Are Not Allowed To Delete This Character", 403));
+			}
+
+			//perform the actual removal of the Favorite
+			$favorite->delete($pdo);
+			//update the message
+			$reply->message = "Favorite Successfully Removed.";
 		}
+	} else {
+		throw new \InvalidArgumentException("Invalid HTTP Request", 400);
 	}
+	//catch any exceptions that are thrown and update the reply status and message accordingly
+} catch(\Exception | \TypeError $exception) {
+	$reply->status = $exception->getCode();
+	$reply->message = $exception->getMessage();
 }
+
+header("Content-Type: application/jason");
+if($reply->data === null) {
+	unset($reply->data);
+}
+
+//encode and return reply to front end user
+echo json_encode($reply);
