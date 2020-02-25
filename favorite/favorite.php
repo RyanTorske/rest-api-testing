@@ -55,5 +55,31 @@ try {
 		}
 	} else if($method === "POST" || $method === "PUT") {
 		//decode the response from the front end
+		$requestContent = file_get_contents("php://input");
+		$requestObject = json_decode($requestContent);
+
+		if(empty($requestObject->favoriteProfileId) ===true) {
+			throw (new \InvalidArgumentException("No Profile Liked to the Favorite.", 405));
+		}
+		if(empty($requestObject->favoriteCharacterId) === true) {
+			throw (new \InvalidArgumentException("No Character Linked to the Favorite", 405));
+		}
+		if(empty($requestObject->favoriteDate) === true) {
+			$requestObject->favoriteDate = date("Y-m-d H:i:s");
+		}
+
+		if($method === "POST") {
+			//enforce that the end user has an XRSF Token
+			verifyXsrf();
+			//enforce the end user has a JWT token
+			validateJwtHeader();
+			//enforce the user is signed in
+			if(empty($_SESSION["profile"]) === true) {
+				throw(new \InvalidArgumentException("You Must Be Logged in to Favorite Characters", 403));
+			}
+			validateJwtHeader();
+			$favorite = new Favorite($_SESSION["profile"]->getPRofileId(), $requestObject->favoriteCharacterId);
+			$favorite->insert($pdo);
+		}
 	}
 }
