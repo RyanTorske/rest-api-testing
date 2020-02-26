@@ -22,4 +22,58 @@ try {
 	}
 	//grab mySQL statement
 	$secrets = new \Secrets("/etc/apache2/capstone-mysql/smash.ini");
+	$pdo = $secrets->getPdoObject();
+
+	//determine which HTTP method is being used
+	$method = array_key_exists("HTTP_X_HTTP_METHOD", $_SERVER) ? $_SERVER["HTTP_X_HTTP_METHOD"] : $_SERVER["REQUEST_METHOD"];
+
+	//if method is post handle the sign in logic
+	if($method === "POST") {
+		//make sure the XSRF Token is valid
+		verifyXsrf();
+
+		//process the request content and decode the json object into a php object
+		$requestContent = file_get_contents("php://input");
+		$requestObject = json_decode($requestContent);
+
+		//check to make sure the password and email field is not empty
+		if(empty($requestObject->profileEmail) === true) {
+			throw(new \InvalidArgumentException(("Email Address Was Not Provided.", 401));
+		} else {
+			$profileEmail = filter_var($requestObject->profileEmail, FILTER_VALIDATE_EMAIL);
+		}
+		if(empty($requestObject->profilePassword) === true) {
+			throw(new \InvalidArgumentException("Invalid Email Entered", 401));
+		}
+		$profile->setProfileActivationToken(null);
+		$profile->update($pdo);
+
+		//verify the hash entered is correct
+		if(password_verify($requestObject->profilePassword, $profile->getProfileHash()) === false) {
+			throw(new \InvalidArgumentException("Password Or Email Is Incorrect.", 401));
+		}
+		//grab the profile from the database and put it into the session
+		$profile = Profile::getProfileByProfileId($pdo, $profile->getProfileId);
+
+		$_SESSION["profile"] = $profile;
+
+		//create the auth payload
+		$authObject = (object) [
+			"profileId" =>$profile->getProfileId(),
+			"profileUsername" => $profile->getProfileUsername()
+		];
+
+		//create and set the JWT Token
+		setJwtAndAuthHeader("auth", $authObject);
+
+		$reply->message = "Sign In Was Successful";
+	}else{
+		throw(new \InvalidArgumentException("Invalid HTTP Method Request.", 418));
+	}
+	//if an exception is thrown u[date the message
+} catch (Exception | TypeError $exception) {
+	$reply->status = $exception->getCode();
+	$reply->message = $exception->getMessage();
 }
+header("Content-type: application/json");
+echo json_encode($reply);
