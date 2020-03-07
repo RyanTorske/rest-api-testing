@@ -38,12 +38,18 @@ try {
 
 		//check to make sure the password and email field is not empty
 		if(empty($requestObject->profileEmail) === true) {
-			throw(new \InvalidArgumentException(("Email Address Was Not Provided.", 401));
+			throw(new \InvalidArgumentException("Email Address Was Not Provided.", 401));
 		} else {
 			$profileEmail = filter_var($requestObject->profileEmail, FILTER_VALIDATE_EMAIL);
 		}
 		if(empty($requestObject->profilePassword) === true) {
 			throw(new \InvalidArgumentException("Invalid Email Entered", 401));
+		}
+		//grab the profile from the database by the email provided
+
+		$profile = Profile::getProfileByProfileEmail($pdo, $profileEmail);
+		if(empty($profile) === true) {
+			throw(new InvalidArgumentException("Invalid Email", 401));
 		}
 		$profile->setProfileActivationToken(null);
 		$profile->update($pdo);

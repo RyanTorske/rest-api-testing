@@ -59,7 +59,7 @@ try {
 		$requestObject = json_decode($requestContent);
 
 		if(empty($requestObject->favoriteProfileId) ===true) {
-			throw (new \InvalidArgumentException("No Profile Liked to the Favorite.", 405));
+			throw (new \InvalidArgumentException("No Profile Linked to the Favorite.", 405));
 		}
 		if(empty($requestObject->favoriteCharacterId) === true) {
 			throw (new \InvalidArgumentException("No Character Linked to the Favorite", 405));
@@ -78,7 +78,7 @@ try {
 				throw(new \InvalidArgumentException("You Must Be Logged in to Favorite Characters", 403));
 			}
 			validateJwtHeader();
-			$favorite = new Favorite($_SESSION["profile"]->getPRofileId(), $requestObject->favoriteCharacterId);
+			$favorite = new Favorite($_SESSION["profile"]->getProfileId(), $requestObject->favoriteCharacterId);
 			$favorite->insert($pdo);
 			$reply->message = "Favorited Character Successful.";
 
